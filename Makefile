@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: CC0-1.0
 #
 # SPDX-FileContributor: Antonio Niño Díaz, 2023
+# SPDX-FileContributor: Adrian "asie" Siekierka, 2024
 
 BLOCKSDS	?= /opt/blocksds/core
 BLOCKSDSEXT	?= /opt/blocksds/external
@@ -8,17 +9,15 @@ BLOCKSDSEXT	?= /opt/blocksds/external
 WONDERFUL_TOOLCHAIN	?= /opt/wonderful
 ARM_NONE_EABI_PATH	?= $(WONDERFUL_TOOLCHAIN)/toolchain/gcc-arm-none-eabi/bin/
 
-# User config
-# ===========
-
-NAME		:= r4tf
+DLDI_DRIVERS	:= r4tf
 
 # Source code paths
 # -----------------
 
-SOURCEDIRS	:= source
-INCLUDEDIRS	:=
-BINDIRS		:=
+SOURCEDIRS	:= common $(DLDI_DRIVERS)
+INCLUDEDIRS	:= common
+BUILDDIR	:= build
+OUTPUTDIR	:= dldi
 
 # Defines passed to all files
 # ---------------------------
@@ -34,15 +33,6 @@ else
 LIBS		:= -lnds7
 endif
 LIBDIRS		:= $(BLOCKSDS)/libs/libnds
-
-# Build artifacts
-# -----------------
-
-BUILDDIR	:= build/
-ELF		:= build/$(NAME).elf
-DUMP		:= build/$(NAME).dump
-MAP		:= build/$(NAME).map
-DLDI	:= $(NAME).dldi
 
 # Tools
 # -----
@@ -76,6 +66,9 @@ SOURCES_S	:= $(shell find -L $(SOURCEDIRS) -name "*.s")
 SOURCES_C	:= $(shell find -L $(SOURCEDIRS) -name "*.c")
 SOURCES_CPP	:= $(shell find -L $(SOURCEDIRS) -name "*.cpp")
 
+DLDI_BINARIES	:= $(foreach driver,$(DLDI_DRIVERS),$(OUTPUTDIR)/$(driver).dldi)
+DLDI_ELFS	:= $(foreach driver,$(DLDI_DRIVERS),$(BUILDDIR)/$(driver).elf)
+
 # Compiler and linker flags
 # -------------------------
 
@@ -105,18 +98,18 @@ ASFLAGS		+= -x assembler-with-cpp $(DEFINES) $(ARCH) \
 		   -ffunction-sections -fdata-sections
 
 CFLAGS		+= -std=gnu11 $(WARNFLAGS) $(DEFINES) $(ARCH) \
-		   -mthumb -mthumb-interwork $(INCLUDEFLAGS) -O2 \
+		   -mthumb -mthumb-interwork $(INCLUDEFLAGS) -Os \
 		   -ffunction-sections -fdata-sections \
 		   -fomit-frame-pointer -fPIC
 
 CXXFLAGS	+= -std=gnu++14 $(WARNFLAGS) $(DEFINES) $(ARCH) \
-		   -mthumb -mthumb-interwork $(INCLUDEFLAGS) -O2 \
+		   -mthumb -mthumb-interwork $(INCLUDEFLAGS) -Os \
 		   -ffunction-sections -fdata-sections \
 		   -fno-exceptions -fno-rtti \
 		   -fomit-frame-pointer -fPIC
 
 LDFLAGS		:= -mthumb -mthumb-interwork $(LIBDIRSFLAGS) \
-		   -Wl,-Map,$(MAP) -Wl,--gc-sections -nostartfiles -nostdlib \
+		   -Wl,--gc-sections -nostartfiles -nostdlib \
 		   -T$(BLOCKSDS)/sys/crts/dldi.ld \
 		   -Wl,--no-warn-rwx-segments \
 		   -Wl,--start-group $(LIBS) -lgcc -Wl,--end-group
@@ -141,25 +134,23 @@ DEPS		:= $(OBJS:.o=.d)
 
 .PHONY: all clean dump
 
-all: $(DLDI)
+all: $(DLDI_BINARIES)
 
-$(ELF): $(OBJS)
-	@echo "  LD      $@"
-	$(V)$(LD) -o $@ $(OBJS) $(LDFLAGS)
+$(DLDI_BINARIES): $(DLDI_ELFS)
 
-$(DLDI): $(ELF)
+$(OUTPUTDIR)/%.dldi: $(BUILDDIR)/%.elf
 	@echo "  OBJCOPY $@"
+	@$(MKDIR) -p $(@D)
 	@$(OBJCOPY) -O binary $< $@
 
-$(DUMP): $(ELF)
-	@echo "  OBJDUMP $@"
-	$(V)$(OBJDUMP) -h -C -S $< > $@
-
-dump: $(DUMP)
+$(BUILDDIR)/%.elf: $(OBJS)
+	@echo "  LD      $@"
+	@$(MKDIR) -p $(@D)
+	$(V)$(LD) -o $@ $(filter $(basename $(notdir $@))/%.o common/%.o,$(OBJS)) $(LDFLAGS)
 
 clean:
 	@echo "  CLEAN"
-	$(V)$(RM) $(DLDI) $(BUILDDIR)
+	$(V)$(RM) $(OUTPUTDIR) $(BUILDDIR)
 
 # Rules
 # -----

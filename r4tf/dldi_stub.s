@@ -16,15 +16,16 @@
     .word   0xBF8DA5ED      @ Magic number to identify this region
     .asciz  " Chishm"       @ Identifying Magic string (8 bytes with null terminator)
     .byte   0x01            @ Version number
-    .byte   DLDI_SIZE_1KB   @ Log [base-2] of the size of this driver in bytes.
-@    .byte   FIX_GOT | FIX_BSS | FIX_GLUE    @ Sections to fix
-    .byte   0x00            @ Sections to fix
+    .byte   __dldi_header_driver_size   @ Log [base-2] of the size of this driver in bytes.
+                                        @ Calculated automatically in the link script.
+    .byte   __dldi_header_fix_flags     @ Sections to fix.
+                                        @ Calculated automatically in the link script.
     .byte   0x00            @ Space allocated in the application, leave empty.
 
 @ Text identifier - can be anything up to 47 chars + terminating null -- 48 bytes
 
     .align  4
-    .asciz  "R4 Revolution for DS"
+    .asciz  "R4 Revolution for DS (a)"
 
 @ Offsets to important sections within the data -- 32 bytes
 
