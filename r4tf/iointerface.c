@@ -5,29 +5,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <nds.h>
+#include "r4tf.h"
 
 #define ROMCTRL_FLAGS (CARD_SEC_CMD | CARD_SEC_DAT | CARD_SEC_EN | CARD_DELAY1(0) | CARD_DELAY2(24))
-
-#define CMD_GET_STATUS          0xB0
-#define CMD_SAVE_READ_REQUEST   0xB2
-#define CMD_SAVE_READ_DATA      0xB3
-#define CMD_SET_FAT_TABLE_ENTRY 0xB4
-#define CMD_ROM_READ_REQUEST    0xB6
-#define CMD_ROM_READ_DATA       0xB7
-#define CMD_SD_READ_REQUEST     0xB9
-#define CMD_SD_READ_DATA        0xBA
-#define CMD_SD_WRITE_START      0xBB
-#define CMD_SD_WRITE_STATUS     0xBC
-#define CMD_SAVE_WRITE_START    0xBD
-#define CMD_SAVE_WRITE_STATUS   0xBE
-#define CMD_ROM_READ_DECRYPTED  0xBF
-
-#define STATUS_INIT_MASK 0x7
-#define STATUS_INIT_IN_PROGRESS     0x0
-#define STATUS_INIT_CARD_NOT_FOUND  0x1
-#define STATUS_INIT_CARD_READ_ERROR 0x2
-#define STATUS_INIT_NO_DS_MENU      0x3
-#define STATUS_INIT_SUCCESS         0x4
 
 static uint32_t get_status(void) {
     REG_AUXSPICNTH = CARD_CR1_ENABLE | CARD_CR1_IRQ;

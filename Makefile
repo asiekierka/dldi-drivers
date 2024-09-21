@@ -146,7 +146,7 @@ $(OUTPUTDIR)/%.dldi: $(BUILDDIR)/%.elf
 $(BUILDDIR)/%.elf: $(OBJS)
 	@echo "  LD      $@"
 	@$(MKDIR) -p $(@D)
-	$(V)$(LD) -o $@ $(filter $(basename $(notdir $@))/%.o common/%.o,$(OBJS)) $(LDFLAGS)
+	$(V)$(LD) -o $@ $(filter $(BUILDDIR)/$(basename $(notdir $@))/%.o $(BUILDDIR)/common/%.o,$(OBJS)) $(LDFLAGS)
 
 clean:
 	@echo "  CLEAN"
