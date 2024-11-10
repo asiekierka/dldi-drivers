@@ -5,16 +5,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <nds.h>
+#include "card.h"
 #include "r4tf.h"
 
 #define ROMCTRL_FLAGS (CARD_SEC_CMD | CARD_SEC_DAT | CARD_SEC_EN | CARD_DELAY1(0) | CARD_DELAY2(24))
 
 static uint32_t get_status(void) {
-    REG_AUXSPICNTH = CARD_CR1_ENABLE | CARD_CR1_IRQ;
+    card_enable();
     REG_CARD_COMMAND[0] = CMD_GET_STATUS;
     REG_ROMCTRL = ROMCTRL_FLAGS | CARD_BLK_SIZE(7) | CARD_nRESET | CARD_ACTIVATE;
-    while (!(REG_ROMCTRL & CARD_DATA_READY));
-    return REG_CARD_DATA_RD;
+    return card_read4();
 }
 
 // Initialize the driver. Returns true on success.
@@ -43,13 +43,11 @@ static inline void prepare_sector_in_command(uint32_t sector) {
 // Reads 512 byte sectors into a buffer that may be unaligned. Returns true on
 // success.
 bool read_sectors(uint32_t sector, uint32_t num_sectors, uint8_t *buffer) {
-    uint8_t wordbuf[4] __attribute__((aligned(4)));
-
     if (sector >= 0x800000)
         return false;
     sector <<= 9;
 
-    REG_AUXSPICNTH = CARD_CR1_ENABLE | CARD_CR1_IRQ;
+    card_enable();
     while (num_sectors) {
         REG_CARD_COMMAND[0] = CMD_SD_READ_REQUEST;
         prepare_sector_in_command(sector);
@@ -62,25 +60,7 @@ bool read_sectors(uint32_t sector, uint32_t num_sectors, uint8_t *buffer) {
         REG_ROMCTRL = ROMCTRL_FLAGS | CARD_BLK_SIZE(1) | CARD_nRESET | CARD_ACTIVATE;
         sector += 512; num_sectors--;
 
-        if ((uint32_t)buffer & 3) {
-            do {
-                if (REG_ROMCTRL & CARD_DATA_READY) {
-                    *((uint32_t*) wordbuf) = REG_CARD_DATA_RD;
-
-                    *(buffer++) = wordbuf[0];
-                    *(buffer++) = wordbuf[1];
-                    *(buffer++) = wordbuf[2];
-                    *(buffer++) = wordbuf[3];
-                }
-            } while (REG_ROMCTRL & CARD_BUSY);
-        } else {
-            do {
-                if (REG_ROMCTRL & CARD_DATA_READY) {
-                    *((uint32_t*) buffer) = REG_CARD_DATA_RD;
-                    buffer += 4;
-                }
-            } while (REG_ROMCTRL & CARD_BUSY);
-        }
+        card_read(buffer);
     }
 
     return true;
@@ -89,33 +69,17 @@ bool read_sectors(uint32_t sector, uint32_t num_sectors, uint8_t *buffer) {
 // Writes 512 byte sectors from a buffer that may be unaligned. Returns true on
 // success.
 bool write_sectors(uint32_t sector, uint32_t num_sectors, const uint8_t *buffer) {
-    uint8_t wordbuf[4] __attribute__((aligned(4)));
-
     if (sector >= 0x800000)
         return false;
     sector <<= 9;
 
-    REG_AUXSPICNTH = CARD_CR1_ENABLE | CARD_CR1_IRQ;
+    card_enable();
     while (num_sectors) {
         REG_CARD_COMMAND[0] = CMD_SD_WRITE_START;
         prepare_sector_in_command(sector);
         REG_ROMCTRL = ROMCTRL_FLAGS | CARD_BLK_SIZE(1) | CARD_WR | CARD_nRESET | CARD_ACTIVATE;
-        if ((uint32_t)buffer & 3) {
-            for (uint32_t i = 0; i < 128; i++) {
-                wordbuf[0] = *(buffer++);
-                wordbuf[1] = *(buffer++);
-                wordbuf[2] = *(buffer++);
-                wordbuf[3] = *(buffer++);
-                while (!(REG_ROMCTRL & CARD_DATA_READY));
-                REG_CARD_DATA_RD = *wordbuf;
-            }
-        } else {
-            for (uint32_t i = 0; i < 128; i++) {
-                while (!(REG_ROMCTRL & CARD_DATA_READY));
-                REG_CARD_DATA_RD = *((uint32_t*) buffer);
-                buffer += 4;
-            }
-        }
+
+        card_write(buffer);
 
         REG_CARD_COMMAND[0] = CMD_SD_WRITE_STATUS;
         do {

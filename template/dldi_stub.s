@@ -25,8 +25,7 @@
 @ Text identifier - can be anything up to 47 chars + terminating null -- 48 bytes
 
     .align  4
-    .asciz  "R4 Revolution for DS (a)"
-
+    .asciz  "
 @ Offsets to important sections within the data -- 32 bytes
 
     .align  6
@@ -41,7 +40,7 @@
 
 @ IO_INTERFACE data -- 32 bytes
 
-    .ascii  "R4TF"          @ ioType (Normally "DLDI")
+    .ascii  "XXXX"          @ ioType (Normally "DLDI")
 #ifdef ARM9
     .word   FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_SLOT_NDS
 #else
