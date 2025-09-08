@@ -6,7 +6,7 @@
 
 __attribute__((always_inline))
 static inline void card_enable(void) {
-    REG_AUXSPICNTH = CARD_CR1_ENABLE | CARD_CR1_IRQ;
+    REG_AUXSPICNTH = CARD_SPICNTH_ENABLE | CARD_SPICNTH_IRQ;
 }
 
 void card_read_aligned(void *buffer);
